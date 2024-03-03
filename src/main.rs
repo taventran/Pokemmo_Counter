@@ -8,6 +8,7 @@ mod read_data;
 use crate::read_data::read_data;
 use fltk::{app, button, prelude::*, text::TextDisplay, window::Window};
 use fltk_grid::Grid;
+use std::sync::mpsc::{self, Sender, TryRecvError};
 use std::thread;
 
 fn main() {
@@ -29,28 +30,36 @@ fn main() {
     grid.set_layout(5, 1);
 
     let mut btn = button::Button::new(0, 1, 0, 1, "Calibrate Position");
-    let mut text = TextDisplay::new(
+
+    let mut name = TextDisplay::new(
+        1,
+        1,
+        1,
+        1,
+        format!("Hunting: {}", { magikarp.name }).as_str(),
+    );
+    let mut num_encounters = TextDisplay::new(
         1,
         1,
         1,
         1,
         (format!("Encounters: {}", magikarp.encounters)).as_str(),
     );
+    grid.set_widget(&mut name, 0, 0);
     grid.set_widget(&mut btn, 3, 0);
-    grid.set_widget(&mut text, 2, 0);
+    grid.set_widget(&mut num_encounters, 2, 0);
     wind.end();
     wind.show();
-
     // Multithreading to allow for tracker to occur while app runs
     btn.set_callback(move |b| {
         // Cloning objects to avoid data races
         let mut magikarp = magikarp.clone();
-        let text = text.clone();
+        let num_encounters = num_encounters.clone();
         let b = b.clone();
-        // Update clone with most recent saved data
+        // Update pokemon clone with most recent data
         magikarp.encounters = read_data();
         thread::spawn(move || {
-            tracker(magikarp, text, b);
+            tracker(magikarp, num_encounters, b);
         });
     });
 

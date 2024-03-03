@@ -1,9 +1,10 @@
 use crate::calibrate::get_press;
 use crate::pokemon_struct::Pokemon;
 use crate::save_data::save_data;
-use fltk::{button::Button, prelude::*, text::TextDisplay};
+use fltk::{app::Receiver, button::Button, prelude::*, text::TextDisplay};
 use image_compare::{rgb_hybrid_compare, CompareError, Similarity};
 use screenshots::Screen;
+use std::process::exit;
 use std::sync::mpsc::{self, TryRecvError};
 
 // Check result of comparison
@@ -23,11 +24,17 @@ fn process_result(result: Result<Similarity, CompareError>) -> Option<f64> {
 // Using 2 mouse position coordinates find if image is still the same
 pub fn tracker(mut p_mon: Pokemon, text: TextDisplay, mut btn: Button) {
     // Get screens
-    let (tx, rx) = mpsc::channel();
+
     let screens = Screen::all().unwrap();
     // let mut proceed: bool = false;
     let coords = get_press();
-    btn.set_label("recalibrate");
+    btn.set_label("Exit Program");
+
+    btn.set_callback(move |b| {
+        exit(1);
+    });
+
+    let (tx, rx) = mpsc::channel();
     let _ = tx.send(());
 
     let width_height = (coords[1].0 - coords[0].0, coords[1].1 - coords[0].1);
@@ -91,7 +98,6 @@ pub fn tracker(mut p_mon: Pokemon, text: TextDisplay, mut btn: Button) {
         match rx.try_recv() {
             Ok(_) | Err(TryRecvError::Disconnected) => {
                 println!("Terminating.");
-                break;
             }
             Err(TryRecvError::Empty) => {}
         }
