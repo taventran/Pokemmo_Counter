@@ -25,10 +25,10 @@ pub fn tracker(mut p_mon: Pokemon, text: TextDisplay, mut btn: Button) {
     // Get screens
     let (tx, rx) = mpsc::channel();
     let screens = Screen::all().unwrap();
-    let _ = tx.send(());
     // let mut proceed: bool = false;
     let coords = get_press();
     btn.set_label("recalibrate");
+    let _ = tx.send(());
 
     let width_height = (coords[1].0 - coords[0].0, coords[1].1 - coords[0].1);
     let unsigned_w_h = (width_height.0 as u32, width_height.1 as u32);
