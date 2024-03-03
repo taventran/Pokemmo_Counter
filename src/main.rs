@@ -2,12 +2,12 @@ mod pokemon_struct; // Use module code
 mod save_data;
 use crate::pokemon_struct::Pokemon; // Get the struct I want
 mod calibrate;
-use crate::calibrate::get_press;
 mod tracker;
 use crate::tracker::tracker;
 mod read_data;
 use crate::read_data::read_data;
-use fltk::{app, button, enums::Color, frame::Frame, prelude::*, window::Window};
+use fltk::{app, button, prelude::*, text::TextDisplay, window::Window};
+use fltk_grid::Grid;
 use std::thread;
 
 fn main() {
@@ -23,32 +23,35 @@ fn main() {
         .with_size(160, 200)
         .center_screen()
         .with_label("Counter");
-    let frame = Frame::default()
-        .with_size(100, 40)
-        .center_of(&wind)
-        .with_label(&(format!("Encounters: {}", magikarp.encounters)));
-    let mut btn = button::Button::new(160, 220, 80, 40, "Click me!");
-    btn.set_label("Calibrate Position");
-    // let mut proceed: bool = false;
+    // Initializng Grid layout
+    let mut grid = Grid::default_fill();
+    grid.show_grid(true);
+    grid.set_layout(5, 1);
 
-    // btn.set_callback(move |b| {
-    //     b.set_label("Recalibrate");
-    //     proceed = true;
-    // });
-
-    // while (!proceed) {}
-
-    // Get where mouse was pressed x and y
-    let coords: Vec<(i32, i32)> = get_press();
-
-    wind.make_resizable(true);
-    wind.set_color(Color::TransparentBg);
+    let mut btn = button::Button::new(0, 1, 0, 1, "Calibrate Position");
+    let mut text = TextDisplay::new(
+        1,
+        1,
+        1,
+        1,
+        (format!("Encounters: {}", magikarp.encounters)).as_str(),
+    );
+    grid.set_widget(&mut btn, 3, 0);
+    grid.set_widget(&mut text, 2, 0);
     wind.end();
     wind.show();
 
     // Multithreading to allow for tracker to occur while app runs
-    thread::spawn(move || {
-        tracker(coords, magikarp, frame);
+    btn.set_callback(move |b| {
+        // Cloning objects to avoid data races
+        let mut magikarp = magikarp.clone();
+        let text = text.clone();
+        let b = b.clone();
+        // Update clone with most recent saved data
+        magikarp.encounters = read_data();
+        thread::spawn(move || {
+            tracker(magikarp, text, b);
+        });
     });
 
     app.run().unwrap();

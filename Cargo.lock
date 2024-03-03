@@ -337,6 +337,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fltk-grid"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53710caf212e8b8f48a403309d2d5c1fca165ca91487fec9f04a9270ce5b67d1"
+dependencies = [
+ "fltk",
+]
+
+[[package]]
 name = "fltk-sys"
 version = "1.4.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -679,6 +688,7 @@ dependencies = [
  "device_query",
  "enigo",
  "fltk",
+ "fltk-grid",
  "image",
  "image-compare",
  "screenshots",

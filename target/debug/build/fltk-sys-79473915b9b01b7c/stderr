@@ -8,21 +8,3 @@ CMake Deprecation Warning at CMakeLists.txt:1 (cmake_minimum_required):
 
 
 
-CMake Warning:
-  Manually-specified variables were not used by the project:
-
-    CMAKE_ASM_COMPILER
-    CMAKE_ASM_FLAGS
-    OpenGL_GL_PREFERENCE
-
-
-/Users/taven/.cargo/registry/src/index.crates.io-6f17d22bba15001f/fltk-sys-1.4.25/cfltk/src/cfl_prefs.cpp:25:16: warning: 'Fl_Preferences' is deprecated: in 1.4.0 - use Fl_Preferences(path, vendor, application, flags) instead [-Wdeprecated-declarations]
-    return new Fl_Preferences(path, vendor, application);
-               ^
-/Users/taven/.cargo/registry/src/index.crates.io-6f17d22bba15001f/fltk-sys-1.4.25/cfltk/fltk/FL/Fl_Preferences.H:205:3: note: 'Fl_Preferences' has been explicitly marked deprecated here
-  FL_DEPRECATED("in 1.4.0 - use Fl_Preferences(path, vendor, application, flags) instead",
-  ^
-/Users/taven/.cargo/registry/src/index.crates.io-6f17d22bba15001f/fltk-sys-1.4.25/cfltk/fltk/FL/fl_attr.h:123:36: note: expanded from macro 'FL_DEPRECATED'
-#define FL_DEPRECATED(msg, func) [[deprecated(msg)]] func
-                                   ^
-1 warning generated.

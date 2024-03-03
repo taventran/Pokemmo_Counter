@@ -1,8 +1,10 @@
+use crate::calibrate::get_press;
 use crate::pokemon_struct::Pokemon;
 use crate::save_data::save_data;
-use fltk::{frame::Frame, prelude::*};
+use fltk::{button::Button, prelude::*, text::TextDisplay};
 use image_compare::{rgb_hybrid_compare, CompareError, Similarity};
 use screenshots::Screen;
+use std::sync::mpsc::{self, TryRecvError};
 
 // Check result of comparison
 fn process_result(result: Result<Similarity, CompareError>) -> Option<f64> {
@@ -19,11 +21,15 @@ fn process_result(result: Result<Similarity, CompareError>) -> Option<f64> {
 }
 
 // Using 2 mouse position coordinates find if image is still the same
-pub fn tracker(coords: Vec<(i32, i32)>, mut p_mon: Pokemon, mut frame: Frame) {
+pub fn tracker(mut p_mon: Pokemon, text: TextDisplay, mut btn: Button) {
     // Get screens
+    let (tx, rx) = mpsc::channel();
     let screens = Screen::all().unwrap();
+    let _ = tx.send(());
+    // let mut proceed: bool = false;
+    let coords = get_press();
+    btn.set_label("recalibrate");
 
-    // Get the width and height needed
     let width_height = (coords[1].0 - coords[0].0, coords[1].1 - coords[0].1);
     let unsigned_w_h = (width_height.0 as u32, width_height.1 as u32);
     println!(
@@ -62,8 +68,7 @@ pub fn tracker(coords: Vec<(i32, i32)>, mut p_mon: Pokemon, mut frame: Frame) {
                 "Name of pokemon: {}, Number of Encounters: {}",
                 p_mon.name, p_mon.encounters
             );
-            frame
-                .clone()
+            text.clone()
                 .with_label(&(format!("Encounters: {}", p_mon.encounters)));
             let _ = save_data(&p_mon);
             // break if not the same
@@ -82,6 +87,13 @@ pub fn tracker(coords: Vec<(i32, i32)>, mut p_mon: Pokemon, mut frame: Frame) {
                 score = process_result(result);
                 println!("score: {:?}", score);
             }
+        }
+        match rx.try_recv() {
+            Ok(_) | Err(TryRecvError::Disconnected) => {
+                println!("Terminating.");
+                break;
+            }
+            Err(TryRecvError::Empty) => {}
         }
     }
 }
