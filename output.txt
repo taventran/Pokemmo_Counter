@@ -1,9 +1,1 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-Encounters: 10160
-=======
-Encounters: 15910
->>>>>>> recalibrate
-=======
-Encounters: 15910
->>>>>>> recalibrate
+Encounters: 15

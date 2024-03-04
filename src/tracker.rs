@@ -4,7 +4,8 @@ use crate::save_data::save_data;
 use fltk::{button::Button, prelude::*, text};
 use image_compare::{rgb_hybrid_compare, CompareError, Similarity};
 use screenshots::Screen;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::cell::RefCell;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
 
 // Check result of comparison
@@ -22,9 +23,29 @@ fn process_result(result: Result<Similarity, CompareError>) -> Option<f64> {
 }
 
 // Using 2 mouse position coordinates find if image is still the same
-pub fn tracker(mut p_mon: Pokemon, text: text::TextDisplay, mut btn: Button) {
-    // Get screens
+// And update encounter and gui accordingly
+pub fn tracker(
+    mut p_mon: Pokemon,
+    text: text::TextDisplay,
+    mut btn: Button,
+    mut add_btns: Vec<Button>,
+    mut add_by_text: text::TextDisplay,
+) {
+    let add_by = Arc::new(AtomicU32::new(1));
+    let add_by_clone1 = Arc::clone(&add_by);
+    let add_by_clone2 = Arc::clone(&add_by);
+    let add_by_clone3 = Arc::clone(&add_by);
+    add_btns[0].set_callback(move |_| {
+        add_by_clone1.store(1, Ordering::Relaxed);
+    });
+    add_btns[1].set_callback(move |_| {
+        add_by_clone2.store(3, Ordering::Relaxed);
+    });
+    add_btns[2].set_callback(move |_| {
+        add_by_clone3.store(5, Ordering::Relaxed);
+    });
 
+    // Get screens
     let screens = Screen::all().unwrap();
     // let mut proceed: bool = false;
     let coords = get_press();
@@ -59,6 +80,17 @@ pub fn tracker(mut p_mon: Pokemon, text: text::TextDisplay, mut btn: Button) {
         let two_secs = std::time::Duration::from_millis(2000);
         std::thread::sleep(two_secs);
 
+        // Add by text update
+        let mut update_label = text::TextBuffer::default();
+        update_label.set_text(
+            format!(
+                "Increasing Encounters By: {}",
+                add_by.load(Ordering::Relaxed)
+            )
+            .as_str(),
+        );
+
+        add_by_text.set_buffer(update_label);
         // Capture second image to compare
         let mut image = screens[0]
             .capture_area(coords[0].0, coords[0].1, unsigned_w_h.0, unsigned_w_h.1)
@@ -103,5 +135,5 @@ pub fn tracker(mut p_mon: Pokemon, text: text::TextDisplay, mut btn: Button) {
         }
     }
     // If they exited out of the loop they clicked recalibrate
-    tracker(p_mon, text, btn);
+    tracker(p_mon, text, btn, add_btns, add_by_text);
 }
