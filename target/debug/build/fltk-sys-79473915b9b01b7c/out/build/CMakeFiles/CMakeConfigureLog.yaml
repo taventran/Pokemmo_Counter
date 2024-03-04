@@ -1287,3 +1287,38 @@ events:
         
       exitCode: 0
 ...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "fltk/CMake/resources.cmake:78 (try_compile)"
+      - "fltk/CMakeLists.txt:73 (include)"
+    directories:
+      source: "/Users/taven/Documents/code/rustTest/pokemmo_counter/target/debug/build/fltk-sys-79473915b9b01b7c/out/build/fltk/CMakeFiles/CMakeTmp"
+      binary: "/Users/taven/Documents/code/rustTest/pokemmo_counter/target/debug/build/fltk-sys-79473915b9b01b7c/out/build/fltk/CMakeFiles/CMakeTmp"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC --target=arm64-apple-darwin -mmacosx-version-min=11.0"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: " -framework Cocoa"
+      CMAKE_MODULE_PATH: "/Users/taven/.cargo/registry/src/index.crates.io-6f17d22bba15001f/fltk-sys-1.4.25/cfltk/fltk/CMake"
+      CMAKE_OSX_ARCHITECTURES: "arm64"
+      CMAKE_OSX_DEPLOYMENT_TARGET: ""
+      CMAKE_OSX_SYSROOT: "/Library/Developer/CommandLineTools/SDKs/MacOSX14.2.sdk"
+    buildResult:
+      variable: "HAVE_PTHREAD_MUTEX_RECURSIVE"
+      cached: true
+      stdout: |
+        Change Dir: '/Users/taven/Documents/code/rustTest/pokemmo_counter/target/debug/build/fltk-sys-79473915b9b01b7c/out/build/fltk/CMakeFiles/CMakeTmp'
+        
+        Run Build Command(s): /opt/homebrew/Cellar/cmake/3.28.3/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_99cd9/fast
+        /Library/Developer/CommandLineTools/usr/bin/make  -f CMakeFiles/cmTC_99cd9.dir/build.make CMakeFiles/cmTC_99cd9.dir/build
+        Building C object CMakeFiles/cmTC_99cd9.dir/pthread_mutex_recursive.c.o
+        /usr/bin/cc   -ffunction-sections -fdata-sections -fPIC --target=arm64-apple-darwin -mmacosx-version-min=11.0  -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.2.sdk -MD -MT CMakeFiles/cmTC_99cd9.dir/pthread_mutex_recursive.c.o -MF CMakeFiles/cmTC_99cd9.dir/pthread_mutex_recursive.c.o.d -o CMakeFiles/cmTC_99cd9.dir/pthread_mutex_recursive.c.o -c /Users/taven/.cargo/registry/src/index.crates.io-6f17d22bba15001f/fltk-sys-1.4.25/cfltk/fltk/CMake/pthread_mutex_recursive.c
+        Linking C executable cmTC_99cd9
+        /opt/homebrew/Cellar/cmake/3.28.3/bin/cmake -E cmake_link_script CMakeFiles/cmTC_99cd9.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC --target=arm64-apple-darwin -mmacosx-version-min=11.0  -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.2.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names  -framework Cocoa  CMakeFiles/cmTC_99cd9.dir/pthread_mutex_recursive.c.o -o cmTC_99cd9 
+        
+      exitCode: 0
+...

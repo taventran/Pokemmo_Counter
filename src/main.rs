@@ -2,12 +2,12 @@ mod pokemon_struct; // Use module code
 mod save_data;
 use crate::pokemon_struct::Pokemon; // Get the struct I want
 mod calibrate;
-use crate::calibrate::get_press;
-mod tracker;
-use crate::tracker::tracker;
 mod read_data;
+mod tracker;
 use crate::read_data::read_data;
-use fltk::{app, button, enums::Color, frame::Frame, prelude::*, window::Window};
+use crate::tracker::tracker;
+use fltk::{app, button, enums::Align, enums::*, prelude::*, text, window::Window};
+use fltk_grid::Grid;
 use std::thread;
 
 fn main() {
@@ -19,36 +19,65 @@ fn main() {
 
     // Declare app size
     let app = app::App::default();
+    app::background(81, 70, 78);
+    app::set_font(Font::Courier);
+    app::set_font_size(20);
     let mut wind = Window::default()
-        .with_size(160, 200)
+        .with_size(300, 300)
         .center_screen()
         .with_label("Counter");
-    let frame = Frame::default()
-        .with_size(100, 40)
-        .center_of(&wind)
-        .with_label(&(format!("Encounters: {}", magikarp.encounters)));
-    let mut btn = button::Button::new(160, 220, 80, 40, "Click me!");
-    btn.set_label("Calibrate Position");
-    // let mut proceed: bool = false;
+    // Initializng Grid layout
+    let mut grid = Grid::default_fill();
+    grid.set_align(Align::Center);
+    // grid.show_grid(true);
+    grid.set_layout(5, 3);
 
-    // btn.set_callback(move |b| {
-    //     b.set_label("Recalibrate");
-    //     proceed = true;
-    // });
+    // Creating buttons
+    let mut calibrate_btn = button::Button::new(1, 1, 1, 1, "Calibrate Position");
+    calibrate_btn.set_color(Color::XtermBgYellow);
 
-    // while (!proceed) {}
+    let mut btn1 = button::Button::new(0, 0, 0, 0, "+1");
+    let mut btn2 = button::Button::new(0, 0, 0, 0, "+3");
+    let mut btn3 = button::Button::new(0, 0, 0, 0, "+5");
 
-    // Get where mouse was pressed x and y
-    let coords: Vec<(i32, i32)> = get_press();
+    let mut label1 = text::TextBuffer::default();
+    label1.set_text(format!("Hunting: {}", { magikarp.name }).as_str());
+    let mut name = text::TextDisplay::new(1, 1, 1, 1, "");
+    name.set_buffer(label1);
+    name.set_color(Color::rgb_color(60, 90, 166));
+    name.set_text_color(Color::rgb_color(199, 160, 8));
+    name.set_text_size(25);
 
-    wind.make_resizable(true);
-    wind.set_color(Color::TransparentBg);
+    let mut label2 = text::TextBuffer::default();
+    label2.set_text(format!("Encounters: {}", magikarp.encounters).as_str());
+    let mut num_encounters = text::TextDisplay::new(1, 1, 1, 1, "");
+    num_encounters.set_text_size(50);
+    num_encounters.set_buffer(label2);
+    num_encounters.set_color(Color::rgb_color(60, 90, 166));
+    num_encounters.set_text_color(Color::rgb_color(199, 160, 8));
+    num_encounters.set_text_size(25);
+
+    grid.set_widget(&mut name, 0, 0..3);
+    grid.set_widget(&mut num_encounters, 1, 0..3);
+    grid.set_widget(&mut calibrate_btn, 2, 0..3);
+    grid.set_widget(&mut btn1, 3, 0);
+    grid.set_widget(&mut btn2, 3, 1);
+    grid.set_widget(&mut btn3, 3, 2);
+
     wind.end();
     wind.show();
 
     // Multithreading to allow for tracker to occur while app runs
-    thread::spawn(move || {
-        tracker(coords, magikarp, frame);
+    calibrate_btn.set_callback(move |b| {
+        // Cloning objects to avoid data races
+        let mut magikarp = magikarp.clone();
+        let num_encounters = num_encounters.clone();
+        let b = b.clone();
+        // Update pokemon clone with most recent data
+        magikarp.encounters = read_data();
+        thread::spawn(move || {
+            tracker(magikarp, num_encounters, b);
+        });
     });
 
     app.run().unwrap();
