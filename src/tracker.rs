@@ -103,7 +103,7 @@ pub fn tracker(
             );
             // Update label
             update_label = text::TextBuffer::default();
-            update_label.set_text(format!("Encounters: {}", p_mon.encounters).as_str());
+            update_label.set_text(format!("{}", p_mon.encounters).as_str());
             text.clone().set_buffer(update_label);
             let _ = save_data(&p_mon);
 

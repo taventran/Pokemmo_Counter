@@ -1,3 +1,4 @@
+use rust_embed::RustEmbed;
 mod pokemon_struct; // Use module code
 mod save_data;
 use crate::pokemon_struct::Pokemon; // Get the struct I want
@@ -6,11 +7,17 @@ mod read_data;
 mod tracker;
 use crate::read_data::read_data;
 use crate::tracker::tracker;
-use fltk::{app, button::Button, enums::Align, enums::*, prelude::*, text, window::Window};
+use fltk::{
+    app, button::Button, enums::*, frame::Frame, image::PngImage, prelude::*, text, window::Window,
+};
 use fltk_grid::Grid;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::thread;
+
+#[derive(RustEmbed)]
+#[folder = "images/"]
+struct Asset;
 
 fn main() {
     // Initialize a pokemon
@@ -32,7 +39,14 @@ fn main() {
     let mut grid = Grid::default_fill();
     grid.set_align(Align::Center);
     // grid.show_grid(true);
-    grid.set_layout(5, 3);
+    grid.set_layout(5, 4);
+    // Adding image
+    // let img = Asset::get("target/gengar.png").unwrap();
+
+    let mut img = PngImage::load("images/pokeball.png").unwrap();
+    img.scale(70, 55, true, true);
+    let mut img_frame = Frame::default();
+    img_frame.set_image(Some(img));
 
     // Creating buttons
     let mut calibrate_btn = Button::new(1, 1, 1, 1, "Calibrate Position");
@@ -51,6 +65,8 @@ fn main() {
     btn3.set_color(Color::rgb_color(131, 16, 16));
     btn3.set_label_color(Color::rgb_color(244, 244, 244));
 
+    let mut btn_increase = Button::new(0, 0, 0, 0, "⬆️");
+    let mut btn_decrease = Button::new(0, 0, 0, 0, "⬇️");
     // Creating Labels and styling them
     let mut label1 = text::TextBuffer::default();
     label1.set_text(format!("Hunting: {}", { magikarp.name }).as_str());
@@ -60,7 +76,7 @@ fn main() {
     name.set_text_color(Color::rgb_color(244, 244, 244));
 
     let mut label2 = text::TextBuffer::default();
-    label2.set_text(format!("Encounters: {}", magikarp.encounters).as_str());
+    label2.set_text(format!("{}", magikarp.encounters).as_str());
     let mut num_encounters = text::TextDisplay::new(1, 1, 1, 1, "");
     num_encounters.set_buffer(label2);
     num_encounters.set_color(Color::rgb_color(213, 49, 65));
@@ -73,14 +89,16 @@ fn main() {
     add_by_text.set_color(Color::rgb_color(213, 49, 65));
     add_by_text.set_text_color(Color::rgb_color(244, 244, 244));
 
-    // Setting positions of widgets
-    grid.set_widget(&mut name, 0, 0..3);
-    grid.set_widget(&mut num_encounters, 1, 0..3);
-    grid.set_widget(&mut add_by_text, 2, 0..3);
-    grid.set_widget(&mut calibrate_btn, 3, 0..3);
+    grid.set_widget(&mut name, 0, 0..4);
+    grid.set_widget(&mut num_encounters, 1, 0..4);
+    grid.set_widget(&mut btn_increase, 1, 2);
+    grid.set_widget(&mut btn_decrease, 1, 3);
+    grid.set_widget(&mut add_by_text, 2, 0..4);
+    grid.set_widget(&mut calibrate_btn, 3, 0..4);
     grid.set_widget(&mut btn1, 4, 0);
     grid.set_widget(&mut btn2, 4, 1);
     grid.set_widget(&mut btn3, 4, 2);
+    grid.set_widget(&mut img_frame, 4, 3);
 
     let mut add_btns: Vec<Button> = vec![btn1, btn2, btn3];
 
@@ -116,6 +134,8 @@ fn main() {
         add_by_text_clone3.set_buffer(update_label);
     });
 
+    btn_increase.hide();
+    btn_decrease.hide();
     // TODO: Add a manual way to increase and decrease count
 
     // Multithreading to allow for tracker to occur while app runs
