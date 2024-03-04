@@ -8,6 +8,8 @@ use crate::read_data::read_data;
 use crate::tracker::tracker;
 use fltk::{app, button::Button, enums::Align, enums::*, prelude::*, text, window::Window};
 use fltk_grid::Grid;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 use std::thread;
 
 fn main() {
@@ -34,63 +36,104 @@ fn main() {
 
     // Creating buttons
     let mut calibrate_btn = Button::new(1, 1, 1, 1, "Calibrate Position");
-    calibrate_btn.set_color(Color::XtermBgYellow);
+    calibrate_btn.set_color(Color::rgb_color(131, 16, 16));
+    calibrate_btn.set_label_color(Color::rgb_color(244, 244, 244));
 
     let mut btn1 = Button::new(0, 0, 0, 0, "+1");
     let mut btn2 = Button::new(0, 0, 0, 0, "+3");
     let mut btn3 = Button::new(0, 0, 0, 0, "+5");
 
+    // Adding colors
+    btn1.set_color(Color::rgb_color(131, 16, 16));
+    btn1.set_label_color(Color::rgb_color(244, 244, 244));
+    btn2.set_color(Color::rgb_color(131, 16, 16));
+    btn2.set_label_color(Color::rgb_color(244, 244, 244));
+    btn3.set_color(Color::rgb_color(131, 16, 16));
+    btn3.set_label_color(Color::rgb_color(244, 244, 244));
+
+    // Creating Labels and styling them
     let mut label1 = text::TextBuffer::default();
     label1.set_text(format!("Hunting: {}", { magikarp.name }).as_str());
     let mut name = text::TextDisplay::new(1, 1, 1, 1, "");
     name.set_buffer(label1);
-    name.set_color(Color::rgb_color(60, 90, 166));
-    name.set_text_color(Color::rgb_color(199, 160, 8));
-    name.set_text_size(25);
+    name.set_color(Color::rgb_color(213, 49, 65));
+    name.set_text_color(Color::rgb_color(244, 244, 244));
 
     let mut label2 = text::TextBuffer::default();
     label2.set_text(format!("Encounters: {}", magikarp.encounters).as_str());
     let mut num_encounters = text::TextDisplay::new(1, 1, 1, 1, "");
-    num_encounters.set_text_size(50);
     num_encounters.set_buffer(label2);
-    num_encounters.set_color(Color::rgb_color(60, 90, 166));
-    num_encounters.set_text_color(Color::rgb_color(199, 160, 8));
-    num_encounters.set_text_size(25);
+    num_encounters.set_color(Color::rgb_color(213, 49, 65));
+    num_encounters.set_text_color(Color::rgb_color(244, 244, 244));
 
     let mut label3 = text::TextBuffer::default();
-    label3.set_text("Increasing Encounters By: 1");
+    label3.set_text("Increasing By: 1");
     let mut add_by_text = text::TextDisplay::new(1, 1, 1, 1, "");
-    add_by_text.set_text_size(50);
     add_by_text.set_buffer(label3);
-    add_by_text.set_color(Color::rgb_color(60, 90, 166));
-    add_by_text.set_text_color(Color::rgb_color(199, 160, 8));
-    add_by_text.set_text_size(25);
+    add_by_text.set_color(Color::rgb_color(213, 49, 65));
+    add_by_text.set_text_color(Color::rgb_color(244, 244, 244));
 
+    // Setting positions of widgets
     grid.set_widget(&mut name, 0, 0..3);
     grid.set_widget(&mut num_encounters, 1, 0..3);
-    grid.set_widget(&mut calibrate_btn, 2, 0..3);
-    grid.set_widget(&mut btn1, 3, 0);
-    grid.set_widget(&mut btn2, 3, 1);
-    grid.set_widget(&mut btn3, 3, 2);
-    grid.set_widget(&mut add_by_text, 4, 0..3);
+    grid.set_widget(&mut add_by_text, 2, 0..3);
+    grid.set_widget(&mut calibrate_btn, 3, 0..3);
+    grid.set_widget(&mut btn1, 4, 0);
+    grid.set_widget(&mut btn2, 4, 1);
+    grid.set_widget(&mut btn3, 4, 2);
 
-    wind.end();
-    wind.show();
+    let mut add_btns: Vec<Button> = vec![btn1, btn2, btn3];
 
-    let add_btns: Vec<Button> = vec![btn1, btn2, btn3];
+    // Should find a more efficient way to do this
+    let mut add_by_text_clone1 = add_by_text.clone();
+    let mut add_by_text_clone2 = add_by_text.clone();
+    let mut add_by_text_clone3 = add_by_text.clone();
+
+    let add_by = Arc::new(AtomicU32::new(1));
+    let add_by_clone1 = Arc::clone(&add_by);
+    let add_by_clone2 = Arc::clone(&add_by);
+    let add_by_clone3 = Arc::clone(&add_by);
+
+    add_btns[0].set_callback(move |_| {
+        add_by_clone1.store(1, Ordering::Relaxed);
+        let mut update_label = text::TextBuffer::default();
+        update_label
+            .set_text(format!("Increasing By: {}", add_by_clone1.load(Ordering::Relaxed)).as_str());
+        add_by_text_clone1.set_buffer(update_label);
+    });
+    add_btns[1].set_callback(move |_| {
+        add_by_clone2.store(3, Ordering::Relaxed);
+        let mut update_label = text::TextBuffer::default();
+        update_label
+            .set_text(format!("Increasing By: {}", add_by_clone2.load(Ordering::Relaxed)).as_str());
+        add_by_text_clone2.set_buffer(update_label);
+    });
+    add_btns[2].set_callback(move |_| {
+        add_by_clone3.store(5, Ordering::Relaxed);
+        let mut update_label = text::TextBuffer::default();
+        update_label
+            .set_text(format!("Increasing By: {}", add_by_clone3.load(Ordering::Relaxed)).as_str());
+        add_by_text_clone3.set_buffer(update_label);
+    });
+
+    // TODO: Add a manual way to increase and decrease count
+
     // Multithreading to allow for tracker to occur while app runs
     calibrate_btn.set_callback(move |b| {
         // Cloning objects to avoid data races
-        let mut magikarp = magikarp.clone();
+        let magikarp = magikarp.clone();
         let num_encounters = num_encounters.clone();
         let b = b.clone();
         let add_btns = add_btns.clone();
         let add_by_text = add_by_text.clone();
+        let add_by = add_by.load(Ordering::Relaxed).clone();
         // Update pokemon clone with most recent data
         thread::spawn(move || {
-            tracker(magikarp, num_encounters, b, add_btns, add_by_text);
+            tracker(magikarp, num_encounters, b, add_btns, add_by_text, add_by);
         });
     });
 
+    wind.end();
+    wind.show();
     app.run().unwrap();
 }

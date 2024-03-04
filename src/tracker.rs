@@ -4,7 +4,6 @@ use crate::save_data::save_data;
 use fltk::{button::Button, prelude::*, text};
 use image_compare::{rgb_hybrid_compare, CompareError, Similarity};
 use screenshots::Screen;
-use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
 
@@ -30,8 +29,10 @@ pub fn tracker(
     mut btn: Button,
     mut add_btns: Vec<Button>,
     mut add_by_text: text::TextDisplay,
+    add_by: u32,
 ) {
-    let add_by = Arc::new(AtomicU32::new(1));
+    // Should find a more efficient way to change add by
+    let add_by = Arc::new(AtomicU32::new(add_by));
     let add_by_clone1 = Arc::clone(&add_by);
     let add_by_clone2 = Arc::clone(&add_by);
     let add_by_clone3 = Arc::clone(&add_by);
@@ -76,21 +77,12 @@ pub fn tracker(
     });
 
     while run.load(Ordering::Relaxed) {
-        // Sleep half a second to get next mouse click
-        let two_secs = std::time::Duration::from_millis(2000);
-        std::thread::sleep(two_secs);
-
-        // Add by text update
+        // Update label
         let mut update_label = text::TextBuffer::default();
-        update_label.set_text(
-            format!(
-                "Increasing Encounters By: {}",
-                add_by.load(Ordering::Relaxed)
-            )
-            .as_str(),
-        );
-
+        update_label
+            .set_text(format!("Increasing By: {}", add_by.load(Ordering::Relaxed)).as_str());
         add_by_text.set_buffer(update_label);
+
         // Capture second image to compare
         let mut image = screens[0]
             .capture_area(coords[0].0, coords[0].1, unsigned_w_h.0, unsigned_w_h.1)
@@ -102,24 +94,21 @@ pub fn tracker(
         // Compare the two images to see if it's the same
         let mut result = rgb_hybrid_compare(&image_one, &image_two);
         let mut score = process_result(result);
-        println!("result: {:?}", score);
         // If the same stay here and add to encounters
         if score >= Some(0.95) {
-            p_mon.encounters += 5;
+            p_mon.encounters += add_by.load(Ordering::Relaxed);
             println!(
                 "Name of pokemon: {}, Number of Encounters: {}",
                 p_mon.name, p_mon.encounters
             );
             // Update label
-            let mut update_label = text::TextBuffer::default();
+            update_label = text::TextBuffer::default();
             update_label.set_text(format!("Encounters: {}", p_mon.encounters).as_str());
             text.clone().set_buffer(update_label);
             let _ = save_data(&p_mon);
 
             // Don't update score while image is the same
             while score >= Some(0.95) {
-                let two_secs = std::time::Duration::from_millis(2000);
-                std::thread::sleep(two_secs);
                 image = screens[0]
                     .capture_area(coords[0].0, coords[0].1, unsigned_w_h.0, unsigned_w_h.1)
                     .unwrap();
@@ -130,10 +119,16 @@ pub fn tracker(
 
                 result = rgb_hybrid_compare(&image_one, &image_two);
                 score = process_result(result);
-                println!("score: {:?}", score);
             }
         }
     }
     // If they exited out of the loop they clicked recalibrate
-    tracker(p_mon, text, btn, add_btns, add_by_text);
+    tracker(
+        p_mon,
+        text,
+        btn,
+        add_btns,
+        add_by_text,
+        add_by.load(Ordering::Relaxed),
+    );
 }
