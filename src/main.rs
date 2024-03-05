@@ -1,7 +1,8 @@
 use rust_embed::RustEmbed;
 mod pokemon_struct; // Use module code
 mod save_data;
-use crate::pokemon_struct::Pokemon; // Get the struct I want
+use crate::pokemon_struct::Pokemon;
+use crate::save_data::save_data; // Get the struct I want
 mod calibrate;
 mod read_data;
 mod tracker;
@@ -11,8 +12,9 @@ use fltk::{
     app, button::Button, enums::*, frame::Frame, image::PngImage, prelude::*, text, window::Window,
 };
 use fltk_grid::Grid;
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::Arc;
+use std::sync::atomic::{AtomicI32, Ordering};
+use std::sync::mpsc::channel;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 #[derive(RustEmbed)]
@@ -23,7 +25,7 @@ fn main() {
     // Initialize a pokemon
     let starting_num = read_data();
     let name: &str = "Magikarp";
-    let encounters: u32 = starting_num;
+    let encounters: i32 = starting_num;
     let magikarp = Pokemon { name, encounters };
 
     // Declare app size
@@ -40,9 +42,8 @@ fn main() {
     grid.set_align(Align::Center);
     // grid.show_grid(true);
     grid.set_layout(5, 4);
-    // Adding image
-    // let img = Asset::get("target/gengar.png").unwrap();
 
+    // Adding image
     let mut img = PngImage::load("images/pokeball.png").unwrap();
     img.scale(70, 55, true, true);
     let mut img_frame = Frame::default();
@@ -67,6 +68,7 @@ fn main() {
 
     let mut btn_increase = Button::new(0, 0, 0, 0, "⬆️");
     let mut btn_decrease = Button::new(0, 0, 0, 0, "⬇️");
+
     // Creating Labels and styling them
     let mut label1 = text::TextBuffer::default();
     label1.set_text(format!("Hunting: {}", { magikarp.name }).as_str());
@@ -90,7 +92,7 @@ fn main() {
     add_by_text.set_text_color(Color::rgb_color(244, 244, 244));
 
     grid.set_widget(&mut name, 0, 0..4);
-    grid.set_widget(&mut num_encounters, 1, 0..4);
+    grid.set_widget(&mut num_encounters, 1, 0..2);
     grid.set_widget(&mut btn_increase, 1, 2);
     grid.set_widget(&mut btn_decrease, 1, 3);
     grid.set_widget(&mut add_by_text, 2, 0..4);
@@ -107,10 +109,20 @@ fn main() {
     let mut add_by_text_clone2 = add_by_text.clone();
     let mut add_by_text_clone3 = add_by_text.clone();
 
-    let add_by = Arc::new(AtomicU32::new(1));
+    let add_by = Arc::new(AtomicI32::new(1));
     let add_by_clone1 = Arc::clone(&add_by);
     let add_by_clone2 = Arc::clone(&add_by);
     let add_by_clone3 = Arc::clone(&add_by);
+
+    let (sender_increase, receiver_increase) = channel();
+    let sender1 = sender_increase.clone();
+    let sender2 = sender_increase.clone();
+
+    let (sender_add_by, receiver_add_by) = channel::<i32>();
+
+    let sender_add_by1 = sender_add_by.clone();
+    let sender_add_by3 = sender_add_by.clone();
+    let sender_add_by5 = sender_add_by.clone();
 
     add_btns[0].set_callback(move |_| {
         add_by_clone1.store(1, Ordering::Relaxed);
@@ -118,6 +130,7 @@ fn main() {
         update_label
             .set_text(format!("Increasing By: {}", add_by_clone1.load(Ordering::Relaxed)).as_str());
         add_by_text_clone1.set_buffer(update_label);
+        sender_add_by1.send(1).unwrap();
     });
     add_btns[1].set_callback(move |_| {
         add_by_clone2.store(3, Ordering::Relaxed);
@@ -125,6 +138,7 @@ fn main() {
         update_label
             .set_text(format!("Increasing By: {}", add_by_clone2.load(Ordering::Relaxed)).as_str());
         add_by_text_clone2.set_buffer(update_label);
+        sender_add_by3.send(3).unwrap();
     });
     add_btns[2].set_callback(move |_| {
         add_by_clone3.store(5, Ordering::Relaxed);
@@ -132,25 +146,48 @@ fn main() {
         update_label
             .set_text(format!("Increasing By: {}", add_by_clone3.load(Ordering::Relaxed)).as_str());
         add_by_text_clone3.set_buffer(update_label);
+        sender_add_by5.send(5).unwrap();
     });
 
-    btn_increase.hide();
-    btn_decrease.hide();
-    // TODO: Add a manual way to increase and decrease count
+    btn_increase.set_callback(move |_| {
+        sender1.send(1).unwrap();
+    });
 
-    // Multithreading to allow for tracker to occur while app runs
+    btn_decrease.set_callback(move |_| {
+        sender2.send(-1).unwrap();
+    });
+
+    // TODO: Add a manual way to increase and decrease count
     calibrate_btn.set_callback(move |b| {
         // Cloning objects to avoid data races
         let magikarp = magikarp.clone();
-        let num_encounters = num_encounters.clone();
         let b = b.clone();
         let add_btns = add_btns.clone();
         let add_by_text = add_by_text.clone();
         let add_by = add_by.load(Ordering::Relaxed).clone();
+        let sender = sender_increase.clone();
+        // Locking the mutex
+
         // Update pokemon clone with most recent data
         thread::spawn(move || {
-            tracker(magikarp, num_encounters, b, add_btns, add_by_text, add_by);
+            tracker(magikarp, b, add_btns, add_by_text, add_by, sender);
         });
+    });
+
+    let mut num_encounters = num_encounters.clone();
+
+    thread::spawn(move || loop {
+        let mut encounters = read_data();
+        let num = receiver_increase.recv().unwrap();
+
+        encounters += num;
+        let name = "Magikarp";
+        let temp_poke = Pokemon { name, encounters };
+        let mut new_label = text::TextBuffer::default();
+        new_label.set_text(format!("{}", encounters).as_str());
+        num_encounters.set_buffer(new_label);
+        save_data(&temp_poke).err();
+        println!("Received: {}", num);
     });
 
     wind.end();

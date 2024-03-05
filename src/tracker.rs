@@ -4,7 +4,8 @@ use crate::save_data::save_data;
 use fltk::{button::Button, prelude::*, text};
 use image_compare::{rgb_hybrid_compare, CompareError, Similarity};
 use screenshots::Screen;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
 // Check result of comparison
@@ -25,25 +26,37 @@ fn process_result(result: Result<Similarity, CompareError>) -> Option<f64> {
 // And update encounter and gui accordingly
 pub fn tracker(
     mut p_mon: Pokemon,
-    text: text::TextDisplay,
     mut btn: Button,
     mut add_btns: Vec<Button>,
     mut add_by_text: text::TextDisplay,
-    add_by: u32,
+    add_by: i32,
+    sender: Sender<i32>,
 ) {
     // Should find a more efficient way to change add by
-    let add_by = Arc::new(AtomicU32::new(add_by));
+    let add_by = Arc::new(AtomicI32::new(add_by));
     let add_by_clone1 = Arc::clone(&add_by);
     let add_by_clone2 = Arc::clone(&add_by);
     let add_by_clone3 = Arc::clone(&add_by);
+    let add_by_text1 = add_by_text.clone();
+    let add_by_text2 = add_by_text.clone();
+    let add_by_text3 = add_by_text.clone();
     add_btns[0].set_callback(move |_| {
         add_by_clone1.store(1, Ordering::Relaxed);
+        let mut update_label = text::TextBuffer::default();
+        update_label.set_text(format!("Increasing By: {}", 1).as_str());
+        add_by_text1.clone().set_buffer(update_label);
     });
     add_btns[1].set_callback(move |_| {
         add_by_clone2.store(3, Ordering::Relaxed);
+        let mut update_label = text::TextBuffer::default();
+        update_label.set_text(format!("Increasing By: {}", 3).as_str());
+        add_by_text2.clone().set_buffer(update_label);
     });
     add_btns[2].set_callback(move |_| {
         add_by_clone3.store(5, Ordering::Relaxed);
+        let mut update_label = text::TextBuffer::default();
+        update_label.set_text(format!("Increasing By: {}", 5).as_str());
+        add_by_text3.clone().set_buffer(update_label);
     });
 
     // Get screens
@@ -83,6 +96,8 @@ pub fn tracker(
             .set_text(format!("Increasing By: {}", add_by.load(Ordering::Relaxed)).as_str());
         add_by_text.set_buffer(update_label);
 
+        let _ = save_data(&p_mon);
+
         // Capture second image to compare
         let mut image = screens[0]
             .capture_area(coords[0].0, coords[0].1, unsigned_w_h.0, unsigned_w_h.1)
@@ -96,18 +111,13 @@ pub fn tracker(
         let mut score = process_result(result);
         // If the same stay here and add to encounters
         if score >= Some(0.95) {
-            p_mon.encounters += add_by.load(Ordering::Relaxed);
-            println!(
-                "Name of pokemon: {}, Number of Encounters: {}",
-                p_mon.name, p_mon.encounters
-            );
-            // Update label
-            update_label = text::TextBuffer::default();
-            update_label.set_text(format!("{}", p_mon.encounters).as_str());
-            text.clone().set_buffer(update_label);
-            let _ = save_data(&p_mon);
+            let mut update_label = text::TextBuffer::default();
+            update_label
+                .set_text(format!("Increasing By: {}", add_by.load(Ordering::Relaxed)).as_str());
+            add_by_text.set_buffer(update_label);
 
-            // Don't update score while image is the same
+            sender.send(add_by.load(Ordering::Relaxed)).unwrap();
+
             while score >= Some(0.95) {
                 image = screens[0]
                     .capture_area(coords[0].0, coords[0].1, unsigned_w_h.0, unsigned_w_h.1)
@@ -122,13 +132,14 @@ pub fn tracker(
             }
         }
     }
+    println!("Exited while loop and restarted tracker");
     // If they exited out of the loop they clicked recalibrate
     tracker(
         p_mon,
-        text,
         btn,
         add_btns,
         add_by_text,
         add_by.load(Ordering::Relaxed),
+        sender,
     );
 }
