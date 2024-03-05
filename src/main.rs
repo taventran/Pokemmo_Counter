@@ -14,7 +14,7 @@ use fltk::{
 use fltk_grid::Grid;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::mpsc::channel;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::thread;
 
 #[derive(RustEmbed)]
@@ -24,7 +24,7 @@ struct Asset;
 fn main() {
     // Initialize a pokemon
     let starting_num = read_data();
-    let name: &str = "Magikarp";
+    let name: &str = "Gyarados";
     let encounters: i32 = starting_num;
     let magikarp = Pokemon { name, encounters };
 
@@ -104,6 +104,10 @@ fn main() {
 
     let mut add_btns: Vec<Button> = vec![btn1, btn2, btn3];
 
+    let (sender_increase, receiver_increase) = channel();
+    let sender1 = sender_increase.clone();
+    let sender2 = sender_increase.clone();
+
     // Should find a more efficient way to do this
     let mut add_by_text_clone1 = add_by_text.clone();
     let mut add_by_text_clone2 = add_by_text.clone();
@@ -114,23 +118,12 @@ fn main() {
     let add_by_clone2 = Arc::clone(&add_by);
     let add_by_clone3 = Arc::clone(&add_by);
 
-    let (sender_increase, receiver_increase) = channel();
-    let sender1 = sender_increase.clone();
-    let sender2 = sender_increase.clone();
-
-    let (sender_add_by, receiver_add_by) = channel::<i32>();
-
-    let sender_add_by1 = sender_add_by.clone();
-    let sender_add_by3 = sender_add_by.clone();
-    let sender_add_by5 = sender_add_by.clone();
-
     add_btns[0].set_callback(move |_| {
         add_by_clone1.store(1, Ordering::Relaxed);
         let mut update_label = text::TextBuffer::default();
         update_label
             .set_text(format!("Increasing By: {}", add_by_clone1.load(Ordering::Relaxed)).as_str());
         add_by_text_clone1.set_buffer(update_label);
-        sender_add_by1.send(1).unwrap();
     });
     add_btns[1].set_callback(move |_| {
         add_by_clone2.store(3, Ordering::Relaxed);
@@ -138,7 +131,6 @@ fn main() {
         update_label
             .set_text(format!("Increasing By: {}", add_by_clone2.load(Ordering::Relaxed)).as_str());
         add_by_text_clone2.set_buffer(update_label);
-        sender_add_by3.send(3).unwrap();
     });
     add_btns[2].set_callback(move |_| {
         add_by_clone3.store(5, Ordering::Relaxed);
@@ -146,7 +138,6 @@ fn main() {
         update_label
             .set_text(format!("Increasing By: {}", add_by_clone3.load(Ordering::Relaxed)).as_str());
         add_by_text_clone3.set_buffer(update_label);
-        sender_add_by5.send(5).unwrap();
     });
 
     btn_increase.set_callback(move |_| {
@@ -179,7 +170,6 @@ fn main() {
     thread::spawn(move || loop {
         let mut encounters = read_data();
         let num = receiver_increase.recv().unwrap();
-
         encounters += num;
         let name = "Magikarp";
         let temp_poke = Pokemon { name, encounters };

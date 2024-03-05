@@ -1,4 +1,8 @@
+use serde::Deserialize;
+use serde::Serialize;
+
 // Save pokemon name and number of encounters
+#[derive(serde::Serialize, Deserialize)]
 pub struct Pokemon<'a> {
     pub name: &'a str,
     pub encounters: i32,
@@ -13,3 +17,16 @@ impl<'a> Pokemon<'a> {
         }
     }
 }
+
+// Create Serializer for Pokemon
+// impl<'a> Serialize for Pokemon<'a> {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: Serializer,
+//     {
+//         let mut state = serializer.serialize_struct("Pokemon", 2)?;
+//         state.serialize_field("name", &self.name)?;
+//         state.serialize_field("encounters", &self.encounters)?;
+//         state.end()
+//     }
+// }
