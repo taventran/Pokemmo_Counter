@@ -1,4 +1,5 @@
 use crate::calibrate::get_press;
+use crate::read_data::get_exe_directory;
 use fltk::{button::Button, prelude::*, text};
 use image_compare::{rgb_hybrid_compare, CompareError, Similarity};
 use screenshots::Screen;
@@ -75,8 +76,12 @@ pub fn tracker(
     let image = screens[0]
         .capture_area(coords[0].0, coords[0].1, unsigned_w_h.0, unsigned_w_h.1)
         .unwrap();
-    image.save(format!("hp.png")).unwrap();
-    let image_one = image::open("hp.png").expect("Not same").to_rgb8();
+    image
+        .save(get_exe_directory().unwrap().join("hp.png"))
+        .unwrap();
+    let image_one = image::open(get_exe_directory().unwrap().join("hp.png"))
+        .expect("Not same")
+        .to_rgb8();
 
     // Needed to use arc and atomic bool to pass in closure
     let run = Arc::new(AtomicBool::new(true));
@@ -98,9 +103,13 @@ pub fn tracker(
         let mut image = screens[0]
             .capture_area(coords[0].0, coords[0].1, unsigned_w_h.0, unsigned_w_h.1)
             .unwrap();
-        image.save(format!("check.png")).unwrap();
+        image
+            .save(get_exe_directory().unwrap().join("check.png"))
+            .unwrap();
 
-        let mut image_two = image::open("check.png").expect("Not same").to_rgb8();
+        let mut image_two = image::open(get_exe_directory().unwrap().join("check.png"))
+            .expect("Not same")
+            .to_rgb8();
 
         // Compare the two images to see if it's the same
         let mut result = rgb_hybrid_compare(&image_one, &image_two);
@@ -117,8 +126,10 @@ pub fn tracker(
                 image = screens[0]
                     .capture_area(coords[0].0, coords[0].1, unsigned_w_h.0, unsigned_w_h.1)
                     .unwrap();
-                image.save(format!("check.png")).unwrap();
-                image_two = image::open("check.png")
+                image
+                    .save(get_exe_directory().unwrap().join("check.png"))
+                    .unwrap();
+                image_two = image::open(get_exe_directory().unwrap().join("check.png"))
                     .expect("Not same dimensions")
                     .to_rgb8();
 
