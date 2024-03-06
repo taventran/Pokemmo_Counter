@@ -2,11 +2,11 @@ use rust_embed::RustEmbed;
 mod pokemon_struct; // Use module code
 mod save_data;
 use crate::pokemon_struct::Pokemon;
-use crate::save_data::save_data; // Get the struct I want
+use crate::save_data::{new_pokemon, save_file}; // Get the struct I want
 mod calibrate;
 mod read_data;
 mod tracker;
-use crate::read_data::read_data;
+use crate::read_data::{create_vec, read_from_file};
 use crate::tracker::tracker;
 use fltk::{
     app, button::Button, enums::*, frame::Frame, image::PngImage, prelude::*, text, window::Window,
@@ -14,25 +14,59 @@ use fltk::{
 use fltk_grid::Grid;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::mpsc::channel;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::thread;
+mod start;
 
 #[derive(RustEmbed)]
 #[folder = "images/"]
 struct Asset;
 
-fn main() {
-    // Initialize a pokemon
-    let starting_num = read_data();
-    let name: &str = "Magikarp";
-    let encounters: i32 = starting_num;
-    let magikarp = Pokemon { name, encounters };
+// TODO: Add starting menu instead of using command prompt
 
-    // Declare app size
+fn main() {
+    // Declare app
     let app = app::App::default();
     app::background(81, 70, 78);
     app::set_font(Font::Courier);
     app::set_font_size(20);
+    let mut user_input = String::new();
+    println!("Enter name of the pokemon you're hunting:");
+    std::io::stdin().read_line(&mut user_input).unwrap();
+    user_input = user_input.trim().to_string();
+    println!("Recieved: {}", user_input);
+
+    // Initialize a pokemon
+    let (mut name, mut encounters) = read_from_file("save.csv", user_input.to_lowercase()).unwrap();
+
+    if (name == "Not found" && encounters == -1) {
+        let temp_input = user_input.clone();
+        new_pokemon("save.csv", temp_input);
+        encounters = 0;
+        name = user_input;
+    }
+
+    let cur_poke = Pokemon {
+        name: Box::leak(name.to_owned().into_boxed_str()),
+        encounters,
+    };
+
+    let cur_poke_clone1 = cur_poke.clone();
+
+    let all_pokemon = create_vec("save.csv");
+    // let saved_pokemon;
+    match &all_pokemon {
+        Ok(all_pokemon) => {
+            all_pokemon.iter().for_each(|pokemon| {
+                println!("Name: {}, Encounters: {}", pokemon.name, pokemon.encounters);
+            });
+        }
+        Err(err) => {
+            println!("Error: {} Couldn't make vec", err);
+        }
+    }
+    let all_pokemon = all_pokemon.unwrap();
+
     let mut wind = Window::default()
         .with_size(300, 300)
         .center_screen()
@@ -71,21 +105,21 @@ fn main() {
 
     // Creating Labels and styling them
     let mut label1 = text::TextBuffer::default();
-    label1.set_text(format!("Hunting: {}", { magikarp.name }).as_str());
+    label1.set_text(format!("Hunting: {}", { cur_poke.name }).as_str());
     let mut name = text::TextDisplay::new(1, 1, 1, 1, "");
     name.set_buffer(label1);
     name.set_color(Color::rgb_color(213, 49, 65));
     name.set_text_color(Color::rgb_color(244, 244, 244));
 
     let mut label2 = text::TextBuffer::default();
-    label2.set_text(format!("{}", magikarp.encounters).as_str());
+    label2.set_text(format!("{}", cur_poke.encounters).as_str());
     let mut num_encounters = text::TextDisplay::new(1, 1, 1, 1, "");
     num_encounters.set_buffer(label2);
     num_encounters.set_color(Color::rgb_color(213, 49, 65));
     num_encounters.set_text_color(Color::rgb_color(244, 244, 244));
 
     let mut label3 = text::TextBuffer::default();
-    label3.set_text("Increasing By: 1");
+    label3.set_text("Auto Increasing By: 1");
     let mut add_by_text = text::TextDisplay::new(1, 1, 1, 1, "");
     add_by_text.set_buffer(label3);
     add_by_text.set_color(Color::rgb_color(213, 49, 65));
@@ -104,6 +138,10 @@ fn main() {
 
     let mut add_btns: Vec<Button> = vec![btn1, btn2, btn3];
 
+    let (sender_increase, receiver_increase) = channel();
+    let sender1 = sender_increase.clone();
+    let sender2 = sender_increase.clone();
+
     // Should find a more efficient way to do this
     let mut add_by_text_clone1 = add_by_text.clone();
     let mut add_by_text_clone2 = add_by_text.clone();
@@ -114,39 +152,41 @@ fn main() {
     let add_by_clone2 = Arc::clone(&add_by);
     let add_by_clone3 = Arc::clone(&add_by);
 
-    let (sender_increase, receiver_increase) = channel();
-    let sender1 = sender_increase.clone();
-    let sender2 = sender_increase.clone();
-
-    let (sender_add_by, receiver_add_by) = channel::<i32>();
-
-    let sender_add_by1 = sender_add_by.clone();
-    let sender_add_by3 = sender_add_by.clone();
-    let sender_add_by5 = sender_add_by.clone();
-
     add_btns[0].set_callback(move |_| {
         add_by_clone1.store(1, Ordering::Relaxed);
         let mut update_label = text::TextBuffer::default();
-        update_label
-            .set_text(format!("Increasing By: {}", add_by_clone1.load(Ordering::Relaxed)).as_str());
+        update_label.set_text(
+            format!(
+                "Auto Increasing By: {}",
+                add_by_clone1.load(Ordering::Relaxed)
+            )
+            .as_str(),
+        );
         add_by_text_clone1.set_buffer(update_label);
-        sender_add_by1.send(1).unwrap();
     });
     add_btns[1].set_callback(move |_| {
         add_by_clone2.store(3, Ordering::Relaxed);
         let mut update_label = text::TextBuffer::default();
-        update_label
-            .set_text(format!("Increasing By: {}", add_by_clone2.load(Ordering::Relaxed)).as_str());
+        update_label.set_text(
+            format!(
+                "Auto Increasing By: {}",
+                add_by_clone2.load(Ordering::Relaxed)
+            )
+            .as_str(),
+        );
         add_by_text_clone2.set_buffer(update_label);
-        sender_add_by3.send(3).unwrap();
     });
     add_btns[2].set_callback(move |_| {
         add_by_clone3.store(5, Ordering::Relaxed);
         let mut update_label = text::TextBuffer::default();
-        update_label
-            .set_text(format!("Increasing By: {}", add_by_clone3.load(Ordering::Relaxed)).as_str());
+        update_label.set_text(
+            format!(
+                "Auto Increasing By: {}",
+                add_by_clone3.load(Ordering::Relaxed)
+            )
+            .as_str(),
+        );
         add_by_text_clone3.set_buffer(update_label);
-        sender_add_by5.send(5).unwrap();
     });
 
     btn_increase.set_callback(move |_| {
@@ -157,36 +197,35 @@ fn main() {
         sender2.send(-1).unwrap();
     });
 
-    // TODO: Add a manual way to increase and decrease count
     calibrate_btn.set_callback(move |b| {
         // Cloning objects to avoid data races
-        let magikarp = magikarp.clone();
         let b = b.clone();
         let add_btns = add_btns.clone();
         let add_by_text = add_by_text.clone();
         let add_by = add_by.load(Ordering::Relaxed).clone();
         let sender = sender_increase.clone();
-        // Locking the mutex
 
-        // Update pokemon clone with most recent data
         thread::spawn(move || {
-            tracker(magikarp, b, add_btns, add_by_text, add_by, sender);
+            tracker(b, add_btns, add_by_text, add_by, sender);
         });
     });
 
     let mut num_encounters = num_encounters.clone();
 
     thread::spawn(move || loop {
-        let mut encounters = read_data();
+        let info = read_from_file("save.csv", cur_poke_clone1.name.to_string());
+        let (name, mut encounters) = info.unwrap();
         let num = receiver_increase.recv().unwrap();
-
         encounters += num;
-        let name = "Magikarp";
-        let temp_poke = Pokemon { name, encounters };
+        let temp_poke = Pokemon {
+            name: Box::leak(name.to_owned().into_boxed_str()),
+            encounters,
+        };
         let mut new_label = text::TextBuffer::default();
         new_label.set_text(format!("{}", encounters).as_str());
         num_encounters.set_buffer(new_label);
-        save_data(&temp_poke).err();
+        // save_data(&temp_poke).err();
+        let _ = save_file("save.csv", all_pokemon.clone(), temp_poke);
         println!("Received: {}", num);
     });
 

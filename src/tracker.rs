@@ -1,6 +1,4 @@
 use crate::calibrate::get_press;
-use crate::pokemon_struct::Pokemon;
-use crate::save_data::save_data;
 use fltk::{button::Button, prelude::*, text};
 use image_compare::{rgb_hybrid_compare, CompareError, Similarity};
 use screenshots::Screen;
@@ -25,7 +23,6 @@ fn process_result(result: Result<Similarity, CompareError>) -> Option<f64> {
 // Using 2 mouse position coordinates find if image is still the same
 // And update encounter and gui accordingly
 pub fn tracker(
-    mut p_mon: Pokemon,
     mut btn: Button,
     mut add_btns: Vec<Button>,
     mut add_by_text: text::TextDisplay,
@@ -96,8 +93,6 @@ pub fn tracker(
             .set_text(format!("Increasing By: {}", add_by.load(Ordering::Relaxed)).as_str());
         add_by_text.set_buffer(update_label);
 
-        let _ = save_data(&p_mon);
-
         // Capture second image to compare
         let mut image = screens[0]
             .capture_area(coords[0].0, coords[0].1, unsigned_w_h.0, unsigned_w_h.1)
@@ -135,7 +130,6 @@ pub fn tracker(
     println!("Exited while loop and restarted tracker");
     // If they exited out of the loop they clicked recalibrate
     tracker(
-        p_mon,
         btn,
         add_btns,
         add_by_text,
