@@ -16,7 +16,6 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::thread;
-mod start;
 
 #[derive(RustEmbed)]
 #[folder = "images/"]
@@ -25,36 +24,9 @@ struct Asset;
 // TODO: Add starting menu instead of using command prompt
 
 fn main() {
-    // Declare app
-    let app = app::App::default();
-    app::background(81, 70, 78);
-    app::set_font(Font::Courier);
-    app::set_font_size(20);
-    let mut user_input = String::new();
-    println!("Enter name of the pokemon you're hunting:");
-    std::io::stdin().read_line(&mut user_input).unwrap();
-    user_input = user_input.trim().to_string();
-    println!("Recieved: {}", user_input);
-
-    // Initialize a pokemon
-    let (mut name, mut encounters) = read_from_file("save.csv", user_input.to_lowercase()).unwrap();
-
-    if (name == "Not found" && encounters == -1) {
-        let temp_input = user_input.clone();
-        new_pokemon("save.csv", temp_input);
-        encounters = 0;
-        name = user_input;
-    }
-
-    let cur_poke = Pokemon {
-        name: Box::leak(name.to_owned().into_boxed_str()),
-        encounters,
-    };
-
-    let cur_poke_clone1 = cur_poke.clone();
-
     let all_pokemon = create_vec("save.csv");
     // let saved_pokemon;
+    println!("All pokemon in save file: ");
     match &all_pokemon {
         Ok(all_pokemon) => {
             all_pokemon.iter().for_each(|pokemon| {
@@ -65,7 +37,44 @@ fn main() {
             println!("Error: {} Couldn't make vec", err);
         }
     }
-    let all_pokemon = all_pokemon.unwrap();
+
+    // Intialize app
+    let app = app::App::default();
+    app::background(81, 70, 78);
+    app::set_font(Font::Courier);
+    app::set_font_size(20);
+
+    let mut user_input = String::new();
+    println!("Enter name of the pokemon you're hunting:");
+    std::io::stdin().read_line(&mut user_input).unwrap();
+    user_input = user_input.trim().to_string();
+    // println!("Recieved: {}", user_input);
+
+    // Initialize a pokemon
+    let (mut name, mut encounters) = read_from_file("save.csv", user_input.to_lowercase()).unwrap();
+
+    let mut all_pokemon = all_pokemon.unwrap();
+
+    if name == "Not found" && encounters == -1 {
+        let temp_input = user_input.clone();
+        if let Err(error) = new_pokemon("save.csv", temp_input) {
+            eprintln!("Error occured while making new pokemon: {}", error);
+        };
+        encounters = 0;
+        name = user_input;
+        let cur_poke = Pokemon {
+            name: Box::leak(name.to_owned().into_boxed_str()),
+            encounters,
+        };
+        all_pokemon.push(cur_poke);
+    }
+
+    let cur_poke = Pokemon {
+        name: Box::leak(name.to_owned().into_boxed_str()),
+        encounters,
+    };
+
+    let cur_poke_clone1 = cur_poke.clone();
 
     let mut wind = Window::default()
         .with_size(300, 300)
@@ -78,7 +87,8 @@ fn main() {
     grid.set_layout(5, 4);
 
     // Adding image
-    let mut img = PngImage::load("images/pokeball.png").unwrap();
+    let image_data = include_bytes!("../images/pokeball.png");
+    let mut img = PngImage::from_data(image_data).unwrap();
     img.scale(70, 55, true, true);
     let mut img_frame = Frame::default();
     img_frame.set_image(Some(img));
@@ -105,7 +115,7 @@ fn main() {
 
     // Creating Labels and styling them
     let mut label1 = text::TextBuffer::default();
-    label1.set_text(format!("Hunting: {}", { cur_poke.name }).as_str());
+    label1.set_text(format!("Hunting: {}", { cur_poke.name.to_lowercase() }).as_str());
     let mut name = text::TextDisplay::new(1, 1, 1, 1, "");
     name.set_buffer(label1);
     name.set_color(Color::rgb_color(213, 49, 65));
@@ -201,8 +211,8 @@ fn main() {
         // Cloning objects to avoid data races
         let b = b.clone();
         let add_btns = add_btns.clone();
-        let add_by_text = add_by_text.clone();
         let add_by = add_by.load(Ordering::Relaxed).clone();
+        let add_by_text = add_by_text.clone();
         let sender = sender_increase.clone();
 
         thread::spawn(move || {
@@ -213,6 +223,10 @@ fn main() {
     let mut num_encounters = num_encounters.clone();
 
     thread::spawn(move || loop {
+        // Set sleep so it doesn't hog too much CPU
+        let wait_time = std::time::Duration::from_millis(2);
+        std::thread::sleep(wait_time);
+
         let info = read_from_file("save.csv", cur_poke_clone1.name.to_string());
         let (name, mut encounters) = info.unwrap();
         let num = receiver_increase.recv().unwrap();
@@ -226,7 +240,6 @@ fn main() {
         num_encounters.set_buffer(new_label);
         // save_data(&temp_poke).err();
         let _ = save_file("save.csv", all_pokemon.clone(), temp_poke);
-        println!("Received: {}", num);
     });
 
     wind.end();

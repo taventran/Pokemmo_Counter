@@ -37,22 +37,23 @@ pub fn tracker(
     let add_by_text1 = add_by_text.clone();
     let add_by_text2 = add_by_text.clone();
     let add_by_text3 = add_by_text.clone();
+
     add_btns[0].set_callback(move |_| {
         add_by_clone1.store(1, Ordering::Relaxed);
         let mut update_label = text::TextBuffer::default();
-        update_label.set_text(format!("Increasing By: {}", 1).as_str());
+        update_label.set_text(format!("Auto Increasing By: {}", 1).as_str());
         add_by_text1.clone().set_buffer(update_label);
     });
     add_btns[1].set_callback(move |_| {
         add_by_clone2.store(3, Ordering::Relaxed);
         let mut update_label = text::TextBuffer::default();
-        update_label.set_text(format!("Increasing By: {}", 3).as_str());
+        update_label.set_text(format!("Auto Increasing By: {}", 3).as_str());
         add_by_text2.clone().set_buffer(update_label);
     });
     add_btns[2].set_callback(move |_| {
         add_by_clone3.store(5, Ordering::Relaxed);
         let mut update_label = text::TextBuffer::default();
-        update_label.set_text(format!("Increasing By: {}", 5).as_str());
+        update_label.set_text(format!("Auto Increasing By: {}", 5).as_str());
         add_by_text3.clone().set_buffer(update_label);
     });
 
@@ -74,8 +75,8 @@ pub fn tracker(
     let image = screens[0]
         .capture_area(coords[0].0, coords[0].1, unsigned_w_h.0, unsigned_w_h.1)
         .unwrap();
-    image.save(format!("target/hp.png")).unwrap();
-    let image_one = image::open("target/hp.png").expect("Not same").to_rgb8();
+    image.save(format!("hp.png")).unwrap();
+    let image_one = image::open("hp.png").expect("Not same").to_rgb8();
 
     // Needed to use arc and atomic bool to pass in closure
     let run = Arc::new(AtomicBool::new(true));
@@ -90,40 +91,44 @@ pub fn tracker(
         // Update label
         let mut update_label = text::TextBuffer::default();
         update_label
-            .set_text(format!("Increasing By: {}", add_by.load(Ordering::Relaxed)).as_str());
+            .set_text(format!("Auto Increasing By: {}", add_by.load(Ordering::Relaxed)).as_str());
         add_by_text.set_buffer(update_label);
 
         // Capture second image to compare
         let mut image = screens[0]
             .capture_area(coords[0].0, coords[0].1, unsigned_w_h.0, unsigned_w_h.1)
             .unwrap();
-        image.save(format!("target/check.png")).unwrap();
+        image.save(format!("check.png")).unwrap();
 
-        let mut image_two = image::open("target/check.png").expect("Not same").to_rgb8();
+        let mut image_two = image::open("check.png").expect("Not same").to_rgb8();
 
         // Compare the two images to see if it's the same
         let mut result = rgb_hybrid_compare(&image_one, &image_two);
         let mut score = process_result(result);
+
+        // Set sleep so it doesn't hog too much CPU
+        let sec = std::time::Duration::from_millis(1000);
+        std::thread::sleep(sec);
+
         // If the same stay here and add to encounters
         if score >= Some(0.95) {
-            let mut update_label = text::TextBuffer::default();
-            update_label
-                .set_text(format!("Increasing By: {}", add_by.load(Ordering::Relaxed)).as_str());
-            add_by_text.set_buffer(update_label);
-
             sender.send(add_by.load(Ordering::Relaxed)).unwrap();
-
             while score >= Some(0.95) {
                 image = screens[0]
                     .capture_area(coords[0].0, coords[0].1, unsigned_w_h.0, unsigned_w_h.1)
                     .unwrap();
-                image.save(format!("target/check.png")).unwrap();
-                image_two = image::open("target/check.png")
+                image.save(format!("check.png")).unwrap();
+                image_two = image::open("check.png")
                     .expect("Not same dimensions")
                     .to_rgb8();
 
+                std::thread::sleep(sec);
+
                 result = rgb_hybrid_compare(&image_one, &image_two);
                 score = process_result(result);
+                if !run.load(Ordering::Relaxed) {
+                    break;
+                }
             }
         }
     }

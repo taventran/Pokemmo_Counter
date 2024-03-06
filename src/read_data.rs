@@ -1,7 +1,19 @@
 use crate::pokemon_struct::Pokemon;
 use csv;
+use csv::Writer;
+use std::env;
 use std::error::Error;
+use std::fs::{self, OpenOptions};
+use std::path::PathBuf;
 
+pub fn get_exe_directory() -> Option<PathBuf> {
+    if let Ok(mut path) = env::current_exe() {
+        path.pop(); // Remove executable name to get directory
+        Some(path)
+    } else {
+        None
+    }
+}
 // Helper function to ensure the string has 'static lifetime
 fn ensure_static(s: &str) -> Result<&'static str, Box<dyn Error>> {
     if s.len() == 0 {
@@ -11,7 +23,26 @@ fn ensure_static(s: &str) -> Result<&'static str, Box<dyn Error>> {
 }
 
 pub fn create_vec(path: &str) -> Result<Vec<Pokemon>, Box<dyn Error>> {
-    let mut reader = csv::Reader::from_path(path)?;
+    // Attempt to open the file with read permissions
+    let full_path = get_exe_directory().unwrap().join(path);
+    // println!("Path: {:?}", full_path);
+
+    let file = OpenOptions::new().read(true).open(full_path);
+
+    // Check if the file was successfully opened
+    let _ = match file {
+        Ok(file) => file,
+        Err(_) => {
+            // If the file doesn't exist, create it
+            println!("No CSV file found... Creating save csv file...");
+            fs::File::create(get_exe_directory().unwrap().join(path))?;
+            let mut writer = Writer::from_path(get_exe_directory().unwrap().join(path))?;
+            writer.write_record(&["Name", "Encounter"])?;
+            fs::File::open(get_exe_directory().unwrap().join(path))?
+        }
+    };
+
+    let mut reader = csv::Reader::from_path(get_exe_directory().unwrap().join(path))?;
     let mut saved_data: Vec<Pokemon> = Vec::new();
 
     for result in reader.records() {
@@ -36,23 +67,41 @@ pub fn create_vec(path: &str) -> Result<Vec<Pokemon>, Box<dyn Error>> {
 }
 
 pub fn read_from_file(path: &str, poke: String) -> Result<(String, i32), Box<dyn Error>> {
-    let mut reader = csv::Reader::from_path(path)?;
-    let poke_name = poke;
-    println!("Input name: {}", poke_name);
+    // Attempt to open the file with read permissions
+    let file = OpenOptions::new()
+        .read(true)
+        .open(get_exe_directory().unwrap().join(path));
+
+    // Check if the file was successfully opened
+    let _ = match file {
+        Ok(file) => file,
+        Err(_) => {
+            // If the file doesn't exist, create it
+            println!("No CSV file found... Creating save csv file...");
+            fs::File::create(get_exe_directory().unwrap().join(path))?;
+            let mut writer = Writer::from_path(get_exe_directory().unwrap().join(path))?;
+            writer.write_record(&["Name", "Encounter"])?;
+            fs::File::open(get_exe_directory().unwrap().join(path))?
+        }
+    };
+
+    let mut reader = csv::Reader::from_path(get_exe_directory().unwrap().join(path))?;
+    let poke_name = poke.to_lowercase();
+    // println!("Input name: {}", poke_name);
 
     for result in reader.records() {
         let record = result.unwrap();
         let name = record.get(0).unwrap().to_string();
-        println!("{:?}", name);
+        // println!("{:?}", name);
         if name == poke_name {
             match record.get(1).unwrap().trim().parse::<i32>() {
                 Ok(number) => {
-                    println!("Parsed number: {}", number);
+                    // println!("Parsed number: {}", number);
                     return Ok((poke_name.to_string(), number));
                 }
                 Err(_) => {
-                    println!("Data: {}", record.get(1).unwrap());
-                    println!("No number");
+                    // println!("Data: {}", record.get(1).unwrap());
+                    // println!("No number");
                     return Ok((poke_name.to_string(), -1));
                 }
             }
