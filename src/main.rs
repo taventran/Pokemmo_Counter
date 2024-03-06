@@ -2,11 +2,11 @@ use rust_embed::RustEmbed;
 mod pokemon_struct; // Use module code
 mod save_data;
 use crate::pokemon_struct::Pokemon;
-use crate::save_data::save_data; // Get the struct I want
+use crate::save_data::save_file; // Get the struct I want
 mod calibrate;
 mod read_data;
 mod tracker;
-use crate::read_data::read_data;
+use crate::read_data::{create_vec, read_from_file};
 use crate::tracker::tracker;
 use fltk::{
     app, button::Button, enums::*, frame::Frame, image::PngImage, prelude::*, text, window::Window,
@@ -23,10 +23,27 @@ struct Asset;
 
 fn main() {
     // Initialize a pokemon
-    let starting_num = read_data();
-    let name: &str = "Gyarados";
-    let encounters: i32 = starting_num;
-    let magikarp = Pokemon { name, encounters };
+    let name = "magikarp".to_string();
+    let (name, encounters) = read_from_file("save.csv", name).unwrap();
+    let cur_poke = Pokemon {
+        name: Box::leak(name.to_owned().into_boxed_str()),
+        encounters,
+    };
+    let cur_poke_clone1 = cur_poke.clone();
+
+    let all_pokemon = create_vec("save.csv");
+    // let saved_pokemon;
+    match &all_pokemon {
+        Ok(all_pokemon) => {
+            all_pokemon.iter().for_each(|pokemon| {
+                println!("Name: {}, Encounters: {}", pokemon.name, pokemon.encounters);
+            });
+        }
+        Err(err) => {
+            println!("Error: {} Couldn't make vec", err);
+        }
+    }
+    let all_pokemon = all_pokemon.unwrap();
 
     // Declare app size
     let app = app::App::default();
@@ -71,14 +88,14 @@ fn main() {
 
     // Creating Labels and styling them
     let mut label1 = text::TextBuffer::default();
-    label1.set_text(format!("Hunting: {}", { magikarp.name }).as_str());
+    label1.set_text(format!("Hunting: {}", { cur_poke.name }).as_str());
     let mut name = text::TextDisplay::new(1, 1, 1, 1, "");
     name.set_buffer(label1);
     name.set_color(Color::rgb_color(213, 49, 65));
     name.set_text_color(Color::rgb_color(244, 244, 244));
 
     let mut label2 = text::TextBuffer::default();
-    label2.set_text(format!("{}", magikarp.encounters).as_str());
+    label2.set_text(format!("{}", cur_poke.encounters).as_str());
     let mut num_encounters = text::TextDisplay::new(1, 1, 1, 1, "");
     num_encounters.set_buffer(label2);
     num_encounters.set_color(Color::rgb_color(213, 49, 65));
@@ -148,35 +165,35 @@ fn main() {
         sender2.send(-1).unwrap();
     });
 
-    // TODO: Add a manual way to increase and decrease count
     calibrate_btn.set_callback(move |b| {
         // Cloning objects to avoid data races
-        let magikarp = magikarp.clone();
         let b = b.clone();
         let add_btns = add_btns.clone();
         let add_by_text = add_by_text.clone();
         let add_by = add_by.load(Ordering::Relaxed).clone();
         let sender = sender_increase.clone();
-        // Locking the mutex
 
-        // Update pokemon clone with most recent data
         thread::spawn(move || {
-            tracker(magikarp, b, add_btns, add_by_text, add_by, sender);
+            tracker(b, add_btns, add_by_text, add_by, sender);
         });
     });
 
     let mut num_encounters = num_encounters.clone();
 
     thread::spawn(move || loop {
-        let mut encounters = read_data();
+        let mut info = read_from_file("save.csv", cur_poke_clone1.name.to_string());
+        let (name, mut encounters) = info.unwrap();
         let num = receiver_increase.recv().unwrap();
         encounters += num;
-        let name = "Magikarp";
-        let temp_poke = Pokemon { name, encounters };
+        let temp_poke = Pokemon {
+            name: Box::leak(name.to_owned().into_boxed_str()),
+            encounters,
+        };
         let mut new_label = text::TextBuffer::default();
         new_label.set_text(format!("{}", encounters).as_str());
         num_encounters.set_buffer(new_label);
-        save_data(&temp_poke).err();
+        // save_data(&temp_poke).err();
+        save_file("save.csv", all_pokemon.clone(), temp_poke);
         println!("Received: {}", num);
     });
 
