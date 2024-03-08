@@ -4,6 +4,7 @@ An encounter counter for pokemmo so people can track their encounters while shin
 ## How to use
 https://www.youtube.com/watch?v=uAkd63_IiLY&t=242s&ab_channel=TavenTran
 
+## Downloads
 ARM Version:
 https://www.mediafire.com/file/njp4pgzttuyx2lq/pokemmo_counter.zip/file
 
