@@ -132,8 +132,8 @@ pub fn tracker(
                 image_two = image::open(get_exe_directory().unwrap().join("check.png"))
                     .expect("Not same dimensions")
                     .to_rgb8();
-
-                std::thread::sleep(sec);
+                // 5 seconds to wait for attack animations
+                std::thread::sleep(std::time::Duration::from_millis(5000));
 
                 result = rgb_hybrid_compare(&image_one, &image_two);
                 score = process_result(result);

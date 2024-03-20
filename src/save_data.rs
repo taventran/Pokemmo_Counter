@@ -41,7 +41,7 @@ pub fn new_pokemon(path: &str, name: String) -> std::io::Result<()> {
     let mut writer = csv::Writer::from_writer(file);
 
     let _ = writer.write_record(&[name.to_lowercase(), 0.to_string()]);
-    // Wrtie data
+    // Write data
 
     Ok(())
 }

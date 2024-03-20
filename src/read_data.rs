@@ -6,6 +6,7 @@ use std::error::Error;
 use std::fs::{self, OpenOptions};
 use std::path::PathBuf;
 
+// Get current directory to create new files there
 pub fn get_exe_directory() -> Option<PathBuf> {
     if let Ok(mut path) = env::current_exe() {
         path.pop(); // Remove executable name to get directory
@@ -14,6 +15,7 @@ pub fn get_exe_directory() -> Option<PathBuf> {
         None
     }
 }
+
 // Helper function to ensure the string has 'static lifetime
 fn ensure_static(s: &str) -> Result<&'static str, Box<dyn Error>> {
     if s.len() == 0 {
@@ -22,6 +24,7 @@ fn ensure_static(s: &str) -> Result<&'static str, Box<dyn Error>> {
     Ok(Box::leak(s.to_owned().into_boxed_str()))
 }
 
+// Create vector of all current pokemon in file
 pub fn create_vec(path: &str) -> Result<Vec<Pokemon>, Box<dyn Error>> {
     // Attempt to open the file with read permissions
     let full_path = get_exe_directory().unwrap().join(path);

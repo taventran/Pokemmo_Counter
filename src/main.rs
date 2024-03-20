@@ -22,7 +22,6 @@ use std::thread;
 struct Asset;
 
 // TODO: Add starting menu instead of using command prompt
-
 fn main() {
     let all_pokemon = create_vec("save.csv");
     // let saved_pokemon;
@@ -55,6 +54,7 @@ fn main() {
 
     let mut all_pokemon = all_pokemon.unwrap();
 
+    // Create new pokemon if user requested pokemon not in save
     if name == "Not found" && encounters == -1 {
         let temp_input = user_input.clone();
         if let Err(error) = new_pokemon("save.csv", temp_input) {
@@ -222,6 +222,7 @@ fn main() {
 
     let mut num_encounters = num_encounters.clone();
 
+    // Thread that updates information and saves information
     thread::spawn(move || loop {
         // Set sleep so it doesn't hog too much CPU
         let wait_time = std::time::Duration::from_millis(2);
